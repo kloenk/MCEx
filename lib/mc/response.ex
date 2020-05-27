@@ -5,18 +5,19 @@ defmodule MCEx.MC.Response do
   def create_response(state, data, serverbound \\ false)
 
   def create_response(state, {:handshake}, _serverbound) do
-    IO.puts("state: #{inspect state}")
+    config = Application.get_env(:mcex, String.to_atom(Map.get(state, "address", "default")), Application.get_env(:mcex, :default))
     # TODO: config element
-    version = "1.15.2"
+    version = "1.15.2" # FIXME: derivate from protocol number
     protocol = Map.get(state, "protocol", 578)
-    max_players = 9999999
+    max_players = config[:max_players]
 
     on_players = 999999999 # TODO: fetch data form 'ring'
     # TODO: fetch sample somewhere
     sample = [%{"name" => "thinkofdeath", "id" => "4566e69f-c907-48ee-8d71-d7ba5aa00d20"}]
 
-    # TODO: fetch description
-    description = "Hello World from Elixir on #{Map.get(state, "address", "ERROR")}"
+    description = config[:motd]
+    description = Regex.replace(~r/%address%/, description, Map.get(state, "address"))
+    description = Regex.replace(~r/%port%/, description, Integer.to_string(Map.get(state, "port")))
 
     json = %{"version" => %{"name" => version, "protocol" => protocol},
              "players" => %{"max" => max_players, "online" => on_players, "sample" => sample},
@@ -24,9 +25,7 @@ defmodule MCEx.MC.Response do
 
     json = Jason.encode!(json)
     json_size = div(bit_size(json), 8)
-    #IO.puts("size: #{json_size}")
     json_size = Packet.to_varInt(json_size)
-    #IO.inspect("json: #{inspect json_size}")
     resp = << 0x00,  json_size::binary, json::binary >>
     size = div(bit_size(resp), 8)
     size = Packet.to_varInt(size)

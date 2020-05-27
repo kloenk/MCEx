@@ -49,7 +49,7 @@ defmodule MCEx.Server do
     responde(rest, socket, state)
   end
 
-  defp responde([], socket, state) do
+  defp responde([], _socket, state) when is_map(state) do
   end
 
   defp read_line(socket, bin) when is_binary(bin) do
@@ -66,13 +66,10 @@ defmodule MCEx.Server do
   end
 
   defp addToState(state, {:handshake, {protocol_version, server_address, server_port, _next_state}}) when is_map(state) do
-    state = state
+    state
     |> Map.put("protocol", protocol_version)
     |> Map.put("address", server_address)
     |> Map.put("port", server_port)
-
-    IO.puts("state_written: #{inspect state}")
-    state
   end
   defp addToState(state, packet) when is_map(state) and is_tuple(packet) do
     state
