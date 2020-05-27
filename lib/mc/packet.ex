@@ -1,4 +1,5 @@
 defmodule MCEx.MC.Packet do
+  use Bitwise, only_operators: true
 
   @doc """
   read a var Int from a binary string
@@ -23,6 +24,18 @@ defmodule MCEx.MC.Packet do
     end
   end
 
+  @spec read_string(binary()) :: {binary(), binary()}
+  def read_string(data) when is_binary(data) do
+    {size, data} = read_varInt(data)
+    <<value::binary-size(size), data::binary>> = data
+    {value, data}
+  end
+
+  def read_uShort(data) when is_binary(data) do
+    <<value::size(2)-unit(8)-unsigned-big, rest::binary>> = data
+    {value, rest}
+  end
+
   @spec split(binary()) :: {[binary()], binary()} | {[], binary()}
   def split(data) when is_binary(data) do
     if bit_size(data) < 8 do
@@ -45,6 +58,41 @@ defmodule MCEx.MC.Packet do
         <<value::binary-size(size), rest::binary>> -> split(data ++ [value], rest)
         _ -> {data, rest}
       end
+    end
+  end
+
+  def to_varInt(value) when is_integer(value) do
+    temp = value &&& 0b01111111
+    value = value >>> 7
+    temp = if value != 0 do
+      temp ||| 0b10000000
+    else
+      temp
+    end
+    cond do
+      value != 0 -> to_varInt(value, <<temp::8>>)
+      value == 0 -> <<temp::8>>
+    end
+    #value = << value::size(5)-unit(7)-signed-big >>
+    #case value do
+    #  << 0::7, 0::7, 0::7, 0::7, rest::7 >> -> <<0::1, rest::7>>
+    #  << 0::7, 0::7, 0::7, d1::7, d2::7  >> -> <<0::1, d2::7, 1::1, d1::7 >>
+    #  << 0::7, 0::7, d1::7, d2::7, d3::7  >> -> <<0::1, d3::7, 1::1, d2::7, 1::1, d1::7 >>
+    #  << 0::7, d1::7, d2::7, d3::7, d4::7 >> -> << 0::1, d4::7, 1::1, d3::7, 1::1, d2::7, 1::1, d1::7 >>
+    #  << d1::7, d2::7, d3::7, d4::7, d5::7 >> -> << 0::1, d1::7, 1::1, d2::7, 1::1, d3::7, 1::1, d4::7, 1::1, d5::7 >>
+    #end
+  end
+  def to_varInt(value, temp_old) when is_integer(value) and is_binary(temp_old) do
+    temp = value &&& 0b01111111
+    value = value >>> 7
+    temp = if value != 0 do
+      temp ||| 0b10000000
+    else
+      temp
+    end
+    cond do
+      value != 0 -> to_varInt(value, <<temp_old::binary, temp::8>>)
+      value == 0 -> <<temp_old::binary, temp::8>>
     end
   end
 
