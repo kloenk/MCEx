@@ -16,21 +16,19 @@ defmodule MCEx.MC.PacketTest do
     end
 
     test "read 2 value" do
-      {value, rest} = Packet.read_varInt(<<0xff, 0x01>>)
+      {value, rest} = Packet.read_varInt(<<0xFF, 0x01>>)
       assert value == 255
       assert rest == <<>>
 
-      {value, rest} = Packet.read_varInt(<<0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f>>)
+      {value, rest} = Packet.read_varInt(<<0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F>>)
       assert value == -1
       assert rest == <<>>
 
-      {value, rest} = Packet.read_varInt(<<0xff, 0xff, 0xff, 0xff, 0x7f>>)
+      {value, rest} = Packet.read_varInt(<<0xFF, 0xFF, 0xFF, 0xFF, 0x7F>>)
       assert value == -1
       assert rest == <<>>
     end
 
     # TODO: add tests for longer instances
   end
-
-
 end

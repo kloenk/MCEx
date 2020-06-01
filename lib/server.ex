@@ -2,7 +2,7 @@ defmodule MCEx.Server do
   alias MCEx.MC.Packet
   alias MCEx.MC.Parse
   alias MCEx.MC.Response
-  alias :gen_tcp ,as: GenTcp
+  alias :gen_tcp, as: GenTcp
   require Logger
 
   def accept(port) do
@@ -13,14 +13,18 @@ defmodule MCEx.Server do
 
   defp loop_acceptor(socket) do
     {:ok, client} = GenTcp.accept(socket)
-    {:ok, pid} = Task.Supervisor.start_child(MCEx.TaskSupervisor, fn -> serve(client, {[], <<>>}, %{}) end)
+
+    {:ok, pid} =
+      Task.Supervisor.start_child(MCEx.TaskSupervisor, fn -> serve(client, {[], <<>>}, %{}) end)
+
     :ok = GenTcp.controlling_process(client, pid)
     loop_acceptor(socket)
   end
 
   defp serve(socket, {packages, bin}, state) when is_binary(bin) do
-    {packages, bin} = socket
-    |> read_line(bin)
+    {packages, bin} =
+      socket
+      |> read_line(bin)
 
     {packages, state} = parse(packages, [], state)
     responde(packages, socket, state)
@@ -61,16 +65,27 @@ defmodule MCEx.Server do
   end
 
   defp write_line(line, socket) do
-    Logger.info("writing: #{inspect line}")
+    Logger.info("writing: #{inspect(line)}")
     GenTcp.send(socket, line)
   end
 
-  defp addToState(state, {:handshake, {protocol_version, server_address, server_port, _next_state}}) when is_map(state) do
+  defp addToState(
+         state,
+         {:handshake, {protocol_version, server_address, server_port, _next_state}}
+       )
+       when is_map(state) do
     state
     |> Map.put("protocol", protocol_version)
     |> Map.put("address", server_address)
     |> Map.put("port", server_port)
   end
+
+  defp addToState(state, {:handshake, {name}}) when is_map(state) and is_binary(name) do
+    state
+    |> Map.put("username", name)
+    |> Map.put("uuid", "c16d92b1-eca1-4387-93de-4f27de56ff03")
+  end
+
   defp addToState(state, packet) when is_map(state) and is_tuple(packet) do
     state
   end

@@ -5,35 +5,65 @@ defmodule MCEx.MC.Response do
   def create_response(state, data, serverbound \\ false)
 
   def create_response(state, {:handshake}, _serverbound) do
-    config = Application.get_env(:mcex, String.to_atom(Map.get(state, "address", "default")), Application.get_env(:mcex, :default))
+    config =
+      Application.get_env(
+        :mcex,
+        String.to_atom(Map.get(state, "address", "default")),
+        Application.get_env(:mcex, :default)
+      )
+
     # TODO: config element
-    version = "1.15.2" # FIXME: derivate from protocol number
+    # FIXME: derivate from protocol number
+    version = "1.15.2"
     protocol = Map.get(state, "protocol", 578)
     max_players = config[:max_players]
 
-    on_players = 999999999 # TODO: fetch data form 'ring'
+    # TODO: fetch data form 'ring'
+    on_players = 999_999_999
     # TODO: fetch sample somewhere
     sample = [%{"name" => "thinkofdeath", "id" => "4566e69f-c907-48ee-8d71-d7ba5aa00d20"}]
 
     description = config[:motd]
     description = Regex.replace(~r/%address%/, description, Map.get(state, "address"))
-    description = Regex.replace(~r/%port%/, description, Integer.to_string(Map.get(state, "port")))
 
-    json = %{"version" => %{"name" => version, "protocol" => protocol},
-             "players" => %{"max" => max_players, "online" => on_players, "sample" => sample},
-             "description" => %{"text" => description}}
+    description =
+      Regex.replace(~r/%port%/, description, Integer.to_string(Map.get(state, "port")))
+
+    json = %{
+      "version" => %{"name" => version, "protocol" => protocol},
+      "players" => %{"max" => max_players, "online" => on_players, "sample" => sample},
+      "description" => %{"text" => description}
+    }
 
     json = Jason.encode!(json)
-    json_size = div(bit_size(json), 8)
-    json_size = Packet.to_varInt(json_size)
-    resp = << 0x00,  json_size::binary, json::binary >>
+    json = Packet.to_string(json)
+    resp = <<0x00, json::binary>>
     size = div(bit_size(resp), 8)
     size = Packet.to_varInt(size)
 
     <<size::binary, resp::binary>>
   end
+
+  def create_response(_state, {:handshake, {_protocol, _host, _port, _next_state}}, _serverbound) do
+    <<>>
+  end
+
+  def create_response(state, {:handshake, {name}}, _serverbound) when is_binary(name) do
+    # FIXME: encryption foo
+
+    # uuid = "\"c16d92b1eca1438793de4f27de56ff03\""
+    uuid = Map.get(state, "uuid")
+    uuid = Packet.to_string(uuid)
+
+    # username = "kloenk"
+    username = Map.get(state, "username")
+    username = Packet.to_string(username)
+
+    <<0x02, uuid::binary, username::binary>>
+  end
+
   def create_response(_state, {:ping, payload}, _serverbound) when is_binary(payload) do
-    msg = << 0x01, payload::binary >>
+    msg = <<0x01, payload::binary>>
     size = div(bit_size(msg), 8)
     size = Packet.to_varInt(size)
 
@@ -44,5 +74,4 @@ defmodule MCEx.MC.Response do
     Logger.warn("cannot create response for #{inspect(data)}")
     <<>>
   end
-
 end

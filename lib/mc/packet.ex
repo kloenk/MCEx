@@ -9,15 +9,18 @@ defmodule MCEx.MC.Packet do
   @spec read_varInt(bitstring()) :: {integer(), binary()}
   def read_varInt(data) when is_binary(data) do
     <<size::1, value::7, data::binary>> = data
+
     case size do
       1 -> read_varInt(<<value::7>>, data)
       0 -> {var_toint(value), data}
     end
   end
+
   @spec read_varInt(bitstring(), binary()) :: {integer(), binary()}
   def read_varInt(value, data) when is_bitstring(value) and is_binary(data) do
     <<size::1, add::7, data::binary>> = data
-    value = << add::7, value::bitstring >>
+    value = <<add::7, value::bitstring>>
+
     case size do
       1 -> read_varInt(value, data)
       0 -> {var_toint(value), data}
@@ -42,18 +45,22 @@ defmodule MCEx.MC.Packet do
       {[], data}
     else
       {size, data} = read_varInt(data)
+
       case data do
-        <<data::binary-size(size), rest::binary>> ->  split([data], rest) #{[data], rest}
+        # {[data], rest}
+        <<data::binary-size(size), rest::binary>> -> split([data], rest)
         _ -> {[], data}
       end
     end
   end
+
   @spec split([binary()], binary()) :: {[binary()], binary()}
   def split(data, rest) when is_list(data) and is_binary(rest) do
     if bit_size(rest) < 8 do
       {data, rest}
     else
       {size, rest} = read_varInt(rest)
+
       case rest do
         <<value::binary-size(size), rest::binary>> -> split(data ++ [value], rest)
         _ -> {data, rest}
@@ -64,48 +71,55 @@ defmodule MCEx.MC.Packet do
   def to_varInt(value) when is_integer(value) do
     temp = value &&& 0b01111111
     value = value >>> 7
-    temp = if value != 0 do
-      temp ||| 0b10000000
-    else
-      temp
-    end
+
+    temp =
+      if value != 0 do
+        temp ||| 0b10000000
+      else
+        temp
+      end
+
     cond do
       value != 0 -> to_varInt(value, <<temp::8>>)
       value == 0 -> <<temp::8>>
     end
-    #value = << value::size(5)-unit(7)-signed-big >>
-    #case value do
-    #  << 0::7, 0::7, 0::7, 0::7, rest::7 >> -> <<0::1, rest::7>>
-    #  << 0::7, 0::7, 0::7, d1::7, d2::7  >> -> <<0::1, d2::7, 1::1, d1::7 >>
-    #  << 0::7, 0::7, d1::7, d2::7, d3::7  >> -> <<0::1, d3::7, 1::1, d2::7, 1::1, d1::7 >>
-    #  << 0::7, d1::7, d2::7, d3::7, d4::7 >> -> << 0::1, d4::7, 1::1, d3::7, 1::1, d2::7, 1::1, d1::7 >>
-    #  << d1::7, d2::7, d3::7, d4::7, d5::7 >> -> << 0::1, d1::7, 1::1, d2::7, 1::1, d3::7, 1::1, d4::7, 1::1, d5::7 >>
-    #end
   end
+
   def to_varInt(value, temp_old) when is_integer(value) and is_binary(temp_old) do
     temp = value &&& 0b01111111
     value = value >>> 7
-    temp = if value != 0 do
-      temp ||| 0b10000000
-    else
-      temp
-    end
+
+    temp =
+      if value != 0 do
+        temp ||| 0b10000000
+      else
+        temp
+      end
+
     cond do
       value != 0 -> to_varInt(value, <<temp_old::binary, temp::8>>)
       value == 0 -> <<temp_old::binary, temp::8>>
     end
   end
 
-  #convert the bitstring to int (also usable for long)
+  def to_string(str) when is_binary(str) do
+    size = div(bit_size(str), 8)
+    size = to_varInt(size)
+
+    <<size::binary, str::binary>>
+  end
+
+  # convert the bitstring to int (also usable for long)
   @spec var_toint(bitstring()) :: integer()
   defp var_toint(data) when is_bitstring(data) do
     size = div(bit_size(data), 7)
-    <<int::size(size)-unit(7)-signed-big>> = data # TODO: make signed
+    # TODO: make signed
+    <<int::size(size)-unit(7)-signed-big>> = data
     int
   end
+
   @spec var_toint(integer()) :: byte()
   defp var_toint(int) when is_integer(int) do
     var_toint(<<int::7>>)
   end
-
 end

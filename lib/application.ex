@@ -6,7 +6,6 @@ defmodule MCEx.Application do
   use Application
 
   def start(_type, args) do
-
     port = 25566
 
     children = [
