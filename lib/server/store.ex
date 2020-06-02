@@ -51,23 +51,24 @@ defmodule MCEx.Server.Store do
     {:noreply, state, {:continue, {:add_user, pid}}}
   end
 
-  def handle_continue({:add_user, pid}, state) do
+  def handle_continue({:add_user, _pid}, state) do
 
     users = state
     |> Map.get("users", %{})
     |> Map.to_list()
     pids = users
     |> Stream.map(fn {_user_name, {_uuid, pid}} -> pid end)
-    |> Stream.filter(fn pid_stream -> pid_stream != pid end)
+    #|> Stream.filter(fn pid_stream -> pid_stream != pid end)
     |> Enum.into([])
 
     data = users
-    |> Stream.map(fn {user_name, {uuid, _pid}} -> {:add_user, {user_name, uuid}} end)
+    |> Stream.map(fn {user_name, {uuid, _pid}} -> {user_name, uuid} end)
     |> Enum.into([])
+    data = {:package, {:add_user, data}}
 
-    Logger.debug("informing #{inspect(pids)} of user change")
+    Logger.debug("informing #{inspect(pids)} of user change with the data: #{inspect(data)}")
 
-    Manifold.send(pids, data)
+    Manifold.send(List.first(pids), data)
 
     {:noreply, state}
   end

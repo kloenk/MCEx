@@ -28,6 +28,7 @@ defmodule MCEx.Server do
 
     {packages, state} = parse(packages, [], state)
     {packages, state} = get_mailbox(packages, state)
+    if length(packages) != 0, do: IO.inspect(packages)
     responde(packages, socket, state)
 
     serve(socket, {packages, bin}, state)
@@ -59,20 +60,31 @@ defmodule MCEx.Server do
 
   @spec get_mailbox(list(), map()) :: {list(), map()}
   defp get_mailbox(packages, state) when is_list(packages) and is_map(state) do
+    #receive do
+    #    {:package, package} -> get_mailbox(packages ++ [ package ], state)
+    #    {:state, {key, value}} -> get_mailbox(packages, Map.put(state, key, value))
+    #after
+    #  0 -> {packages, state}
+    #end
     receive do
-        {:package, package} -> get_mailbox(packages ++ [ package ], state)
-        {:state, {key, value}} -> get_mailbox(packages, Map.put(state, key, value))
+      {:package, package} -> {packages ++ [package], state}
     after
-      0 -> {packages, state}
+      1 -> {packages, state}
+    end
+
+  end
+
+  @spec read_line(any(), binary()) :: {list(), binary()}
+  defp read_line(socket, bin) when is_binary(bin) do
+    case GenTcp.recv(socket, 0, 10) do # 10 ms timeout
+      {:ok, data} -> parse_line(bin, data)
+      {:error, :closed} -> exit(:shutdown)
+      {:error, :timeout} -> {[], bin}
     end
   end
 
-  defp read_line(socket, bin) when is_binary(bin) do
-    data = case GenTcp.recv(socket, 0) do
-      {:ok, data} -> data
-      {:error, :closed} -> exit(:shutdown)
-    end
-    bin = bin <> data
+  defp parse_line(bin, line) when is_binary(bin) and is_binary(line) do
+    bin = bin <> line
     {packages, bin} = Packet.split(bin)
     IO.inspect(packages)
     {packages, bin}
@@ -109,6 +121,7 @@ defmodule MCEx.Server do
 
     # TODO: fetch uuid from some api
     uuid = "c16d92b1-eca1-4387-93de-4f27de56ff03"
+
     config =
       Application.get_env(
         :mcex,
