@@ -109,6 +109,10 @@ defmodule MCEx.MC.Packet do
     <<size::binary, str::binary>>
   end
 
+  @spec make_packet(binary()) :: binary()
+  def make_packet(packet) when is_binary(packet),
+    do: <<to_varInt(div(bit_size(packet), 8))::binary, packet::binary>>
+
   # convert the bitstring to int (also usable for long)
   @spec var_toint(bitstring()) :: integer()
   defp var_toint(data) when is_bitstring(data) do

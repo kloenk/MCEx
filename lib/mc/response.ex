@@ -37,11 +37,8 @@ defmodule MCEx.MC.Response do
 
     json = Jason.encode!(json)
     json = Packet.to_string(json)
-    resp = <<0x00, json::binary>>
-    size = div(bit_size(resp), 8)
-    size = Packet.to_varInt(size)
 
-    <<size::binary, resp::binary>>
+    Packet.make_packet(<<0x00, json::binary>>)
   end
 
   def create_response(_state, {:handshake, {_protocol, _host, _port, _next_state}}, _serverbound) do
@@ -59,16 +56,11 @@ defmodule MCEx.MC.Response do
     username = Map.get(state, "username")
     username = Packet.to_string(username)
 
-    <<0x02, uuid::binary, username::binary>>
+    Packet.make_packet(<<0x02, uuid::binary, username::binary>>)
   end
 
-  def create_response(_state, {:ping, payload}, _serverbound) when is_binary(payload) do
-    msg = <<0x01, payload::binary>>
-    size = div(bit_size(msg), 8)
-    size = Packet.to_varInt(size)
-
-    <<size::binary, msg::binary>>
-  end
+  def create_response(_state, {:ping, payload}, _serverbound) when is_binary(payload),
+    do: Packet.make_packet(<<0x01, payload::binary>>)
 
   def create_response(_state, data, _serverbound) do
     Logger.warn("cannot create response for #{inspect(data)}")

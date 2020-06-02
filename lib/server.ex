@@ -71,7 +71,18 @@ defmodule MCEx.Server do
 
   defp addToState(
          state,
-         {:handshake, {protocol_version, server_address, server_port, _next_state}}
+         {:handshake, {protocol_version, server_address, server_port, :status}}
+       )
+       when is_map(state) do
+    state
+    |> Map.put("protocol", protocol_version)
+    |> Map.put("address", server_address)
+    |> Map.put("port", server_port)
+  end
+
+  defp addToState(
+         state,
+         {:handshake, {protocol_version, server_address, server_port, :login}}
        )
        when is_map(state) do
     state
