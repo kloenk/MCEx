@@ -10,7 +10,7 @@ defmodule MCEx.MC.Parse do
     {:handshake}
   end
 
-  def parse(<<0, rest::binary>>, _serverbound) when is_binary(rest) do
+  def parse(<<0, rest::binary>>, true) when is_binary(rest) do
     {protocol_version, _bin} = Packet.read_varInt(rest)
 
     case protocol_version do
@@ -19,7 +19,7 @@ defmodule MCEx.MC.Parse do
     end
   end
 
-  def parse(<<1, rest::binary>>, _serverbound) when is_binary(rest) do
+  def parse(<<1, rest::binary>>, true) when is_binary(rest) do
     {:ping, rest}
   end
 

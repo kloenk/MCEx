@@ -68,6 +68,10 @@ defmodule MCEx.MC.Packet do
     end
   end
 
+  @doc """
+  convert an integer to an varInt minecraft data type
+  """
+  @spec to_varInt(integer()) :: binary()
   def to_varInt(value) when is_integer(value) do
     temp = value &&& 0b01111111
     value = value >>> 7
@@ -85,6 +89,11 @@ defmodule MCEx.MC.Packet do
     end
   end
 
+  @doc """
+  convert integer to an varInt minecraft data type.
+  This funtcion takes an old temp data and appends the data to it
+  """
+  @spec to_varInt(integer(), binary()) :: binary()
   def to_varInt(value, temp_old) when is_integer(value) and is_binary(temp_old) do
     temp = value &&& 0b01111111
     value = value >>> 7
@@ -102,6 +111,10 @@ defmodule MCEx.MC.Packet do
     end
   end
 
+  @doc """
+  converts a String into an mineccraft string type
+  """
+  @spec to_string(binary()) :: binary()
   def to_string(str) when is_binary(str) do
     size = div(bit_size(str), 8)
     size = to_varInt(size)
@@ -109,9 +122,41 @@ defmodule MCEx.MC.Packet do
     <<size::binary, str::binary>>
   end
 
+  @doc """
+  adds the size of the package to the front of the package, so minecraft can read it.
+  see https://wiki.vg/Protocol#Packet_format
+  """
   @spec make_packet(binary()) :: binary()
   def make_packet(packet) when is_binary(packet),
     do: <<to_varInt(div(bit_size(packet), 8))::binary, packet::binary>>
+
+  @doc """
+  creates a packet from the packet id and the given payload
+  """
+  @spec make_packet(integer(), binary()) :: binary()
+  def make_packet(id, payload) when is_integer(id) and is_binary(payload),
+    do: make_packet(<<id::integer, payload::binary>>)
+
+  @doc """
+  creates a packet from the packet id and the given payload and compresses it
+  if it is bigger than the threshould
+  """
+  @spec make_packet(integer(), binary(), integer()) :: binary()
+  def make_packet(id, payload, threshould) do
+    payload = <<id::integer, payload::binary>>
+    # |> to_varInt()
+    payload_size = div(bit_size(payload), 8)
+
+    payload =
+      if payload_size >= threshould do
+        payload = :zlib.compress(payload)
+        <<to_varInt(payload_size)::binary, payload::binary>>
+      else
+        <<0, payload::binary>>
+      end
+
+    make_packet(payload)
+  end
 
   # convert the bitstring to int (also usable for long)
   @spec var_toint(bitstring()) :: integer()
