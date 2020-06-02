@@ -19,9 +19,9 @@ defmodule MCEx.MC.Response do
     max_players = config[:max_players]
 
     # TODO: fetch data form 'ring'
-    on_players = 999_999_999
-    # TODO: fetch sample somewhere
-    sample = [%{"name" => "thinkofdeath", "id" => "4566e69f-c907-48ee-8d71-d7ba5aa00d20"}]
+    #on_players = 999_999_999
+    on_players = MCEx.Server.Store.get_user_count(config[:server])
+    sample = MCEx.Server.Store.get_user(config[:server], 3) # get 3 samples
 
     description = config[:motd]
     description = Regex.replace(~r/%address%/, description, Map.get(state, "address"))

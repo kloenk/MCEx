@@ -27,6 +27,7 @@ defmodule MCEx.Server do
       |> read_line(bin)
 
     {packages, state} = parse(packages, [], state)
+    {packages, state} = get_mailbox(packages, state)
     responde(packages, socket, state)
 
     serve(socket, {packages, bin}, state)
@@ -56,8 +57,21 @@ defmodule MCEx.Server do
   defp responde([], _socket, state) when is_map(state) do
   end
 
+  @spec get_mailbox(list(), map()) :: {list(), map()}
+  defp get_mailbox(packages, state) when is_list(packages) and is_map(state) do
+    receive do
+        {:package, package} -> get_mailbox(packages ++ [ package ], state)
+        {:state, {key, value}} -> get_mailbox(packages, Map.put(state, key, value))
+    after
+      0 -> {packages, state}
+    end
+  end
+
   defp read_line(socket, bin) when is_binary(bin) do
-    {:ok, data} = GenTcp.recv(socket, 0)
+    data = case GenTcp.recv(socket, 0) do
+      {:ok, data} -> data
+      {:error, :closed} -> exit(:shutdown)
+    end
     bin = bin <> data
     {packages, bin} = Packet.split(bin)
     IO.inspect(packages)
@@ -92,9 +106,21 @@ defmodule MCEx.Server do
   end
 
   defp addToState(state, {:handshake, {name}}) when is_map(state) and is_binary(name) do
+
+    # TODO: fetch uuid from some api
+    uuid = "c16d92b1-eca1-4387-93de-4f27de56ff03"
+    config =
+      Application.get_env(
+        :mcex,
+        String.to_atom(Map.get(state, "address", "default")),
+        Application.get_env(:mcex, :default)
+      )
+
+    MCEx.Server.Store.add_user(config[:server], {name, uuid, self()})
+
     state
     |> Map.put("username", name)
-    |> Map.put("uuid", "c16d92b1-eca1-4387-93de-4f27de56ff03")
+    |> Map.put("uuid", uuid)
   end
 
   defp addToState(state, packet) when is_map(state) and is_tuple(packet) do
